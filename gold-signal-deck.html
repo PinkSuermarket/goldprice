@@ -180,8 +180,8 @@ button.eff{box-shadow:inset 0 -2px 0 currentColor}
   <section class="panel" aria-label="India price estimate">
     <div class="cap"><span>India price estimate</span>
       <span class="seg" role="group" aria-label="Purity">
-        <button type="button" id="p24" aria-pressed="true">24K</button>
-        <button type="button" id="p22" aria-pressed="false">22K</button>
+        <button type="button" id="p24" aria-pressed="false">24K</button>
+        <button type="button" id="p22" aria-pressed="true">22K</button>
       </span>
     </div>
     <div class="duo">
@@ -191,7 +191,7 @@ button.eff{box-shadow:inset 0 -2px 0 currentColor}
     <div class="calc num" id="calc"></div>
     <div class="ctl">
       <div class="line"><label for="gst">GST (3% gold, 5% making)</label>
-        <span class="seg" role="group" aria-label="GST"><button type="button" id="gstOn" aria-pressed="true">ON</button><button type="button" id="gstOff" aria-pressed="false">OFF</button></span></div>
+        <span class="seg" role="group" aria-label="GST"><button type="button" id="gstOn" aria-pressed="false">ON</button><button type="button" id="gstOff" aria-pressed="true">OFF</button></span></div>
       <div class="line"><label>Making charge</label>
         <span class="step"><button type="button" id="mkMinus" aria-label="Lower making charge">−</button><output id="mkVal">0%</output><button type="button" id="mkPlus" aria-label="Raise making charge">+</button></span></div>
       <div class="line"><label for="inrOv">Your own USD/INR rate</label>
@@ -265,10 +265,10 @@ const REC_DEF = {
 /* Manual effect presets, set from the news on 19 Nov 2026. -1 pushes gold down, +1 supports it. */
 const EFF_DEF = {f2:-1, f3:0, f5:1, f6:0};
 
-const KEY = 'goldSignalDeck.v1';
+const KEY = 'goldSignalDeck.v2';
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
-const set = Object.assign({purity:'24', gst:true, making:0, inrOv:'', iv:1}, saved.set);
+const set = Object.assign({purity:'22', gst:false, making:0, inrOv:'', iv:1}, saved.set);
 const eff = Object.assign({}, EFF_DEF, saved.eff);
 const rec = JSON.parse(JSON.stringify(REC_DEF));
 for (const k in (saved.rec || {})) if (rec[k]) Object.assign(rec[k], saved.rec[k]);
