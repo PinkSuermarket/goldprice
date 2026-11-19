@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gold Signal Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one phone-width column of bracketed panels; price first, verdict second, India maths third, the 8 factors last. */
+:root{
+  --bg:#04060c; --panel:#0a1020; --panel-2:#0e1730; --line:#1c2d4f;
+  --ink:#dbe8ff; --dim:#7388ad;
+  --cyan:#27e4ff; --mag:#ff3d9a; --gold:#ffc94a;
+  --up:#2bffa3; --down:#ff5068; --warn:#ffb020;
+  --f-display:'Chakra Petch','Rajdhani','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(39,228,255,.14), transparent 60%),
+    linear-gradient(rgba(39,228,255,.045) 1px, transparent 1px) 0 0/100% 32px,
+    linear-gradient(90deg, rgba(39,228,255,.045) 1px, transparent 1px) 0 0/32px 100%,
+    var(--bg);
+  color:var(--ink); font-family:var(--f-display); font-size:15px; line-height:1.35;
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(rgba(255,255,255,.028) 0 1px, transparent 1px 3px)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.app{max-width:440px;margin:0 auto;padding:14px 16px 44px;display:grid;gap:14px}
+
+/* header */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding-top:4px}
+.brand{font-weight:700;font-size:19px;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 14px rgba(39,228,255,.55)}
+.brand b{color:var(--mag);font-weight:700}
+.clock{font-size:13px;color:var(--cyan);text-align:right;white-space:nowrap}
+.clock small{display:block;color:var(--dim);font-size:10px;letter-spacing:.12em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(10,16,32,.8);
+  padding:4px 9px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.chip.ok{color:var(--up);border-color:rgba(43,255,163,.4)} .chip.ok i{background:var(--up);box-shadow:0 0 8px var(--up);animation:pulse 1s infinite}
+.chip.warn{color:var(--warn);border-color:rgba(255,176,32,.4)} .chip.warn i{background:var(--warn)}
+.chip.bad{color:var(--down);border-color:rgba(255,80,104,.45)} .chip.bad i{background:var(--down)}
+@keyframes pulse{50%{opacity:.25}}
+
+/* panels */
+.panel{position:relative;background:linear-gradient(180deg, rgba(39,228,255,.06), transparent 46%), var(--panel);
+  border:1px solid var(--line);padding:14px}
+.panel::before,.panel::after{content:"";position:absolute;width:16px;height:16px;pointer-events:none}
+.panel::before{top:-1px;left:-1px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan)}
+.panel::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--mag);border-right:2px solid var(--mag)}
+.cap{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.cap span:first-child{color:var(--cyan)}
+
+/* hero */
+.price{font-family:var(--f-mono);font-weight:700;font-size:clamp(40px,13.5vw,58px);line-height:1;color:var(--gold);
+  text-shadow:0 0 22px rgba(255,201,74,.45);letter-spacing:-.02em;transition:color .5s, text-shadow .5s}
+.price.up{color:var(--up);text-shadow:0 0 26px rgba(43,255,163,.7)}
+.price.down{color:var(--down);text-shadow:0 0 26px rgba(255,80,104,.7)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.delta{font-family:var(--f-mono);font-size:13px;margin-top:8px}
+.pos{color:var(--up)} .neg{color:var(--down)} .flat{color:var(--dim)}
+.spark{display:block;width:100%;height:70px;margin-top:10px}
+.meta{font-size:11px;color:var(--dim);margin-top:6px;font-family:var(--f-mono)}
+.note{font-size:11px;color:var(--warn);margin-top:6px}
+
+/* verdict */
+.verdict{font-weight:700;font-size:30px;letter-spacing:.06em;text-transform:uppercase;line-height:1.05}
+.verdict.neg{text-shadow:0 0 18px rgba(255,80,104,.55)} .verdict.pos{text-shadow:0 0 18px rgba(43,255,163,.55)}
+.vsub{font-size:13px;color:var(--dim);margin-top:4px}
+.gauge{position:relative;height:10px;margin:16px 0 6px;border:1px solid var(--line);
+  background:linear-gradient(90deg, rgba(255,80,104,.55), rgba(115,136,173,.15) 50%, rgba(43,255,163,.55))}
+.gauge::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--dim)}
+.needle{position:absolute;top:-6px;width:4px;height:20px;margin-left:-2px;background:#fff;box-shadow:0 0 10px #fff;transition:left .6s}
+.gl{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;color:var(--dim)}
+.cells{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.cell{border:1px solid var(--line);text-align:center;padding:6px 0;font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+.cell b{display:block;font-size:14px}
+.cell.neg{border-color:rgba(255,80,104,.5);color:var(--down)} .cell.pos{border-color:rgba(43,255,163,.5);color:var(--up)}
+.fine{font-size:11px;color:var(--dim);margin-top:10px}
+
+/* india */
+.seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line)}
+.seg button{background:none;border:0;padding:5px 12px;font-size:12px;letter-spacing:.08em;color:var(--dim)}
+.seg button[aria-pressed="true"]{background:var(--cyan);color:#021018;font-weight:700}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 12px}
+.tile{background:var(--panel-2);border:1px solid var(--line);padding:10px}
+.tile small{display:block;font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.tile .num{font-size:clamp(20px,6.6vw,27px);font-weight:700;color:var(--gold);margin-top:2px;display:block}
+.calc{display:grid;gap:5px;font-size:13px}
+.calc div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed rgba(28,45,79,.9);padding-bottom:5px}
+.calc div span:first-child{color:var(--dim)}
+.calc .tot{border-bottom:0;font-weight:700} .calc .tot span:first-child{color:var(--ink)}
+.ctl{display:grid;gap:10px;margin-top:12px}
+.ctl .line{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.ctl label{color:var(--dim)}
+.step{display:inline-flex;align-items:center;border:1px solid var(--line)}
+.step button{background:none;border:0;width:34px;height:30px;font-size:18px;color:var(--cyan)}
+.step output{min-width:52px;text-align:center;font-family:var(--f-mono);font-size:13px}
+.inp{width:104px;background:var(--panel-2);border:1px solid var(--line);padding:6px 8px;font-family:var(--f-mono);font-size:13px;text-align:right}
+.inp::placeholder{color:var(--dim)}
+
+/* factors */
+.fhead{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin:6px 0 -4px}
+.fcard{display:grid;gap:8px}
+.ftop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fname{font-weight:700;font-size:15px;letter-spacing:.03em}
+.fname .num{color:var(--mag);margin-right:8px;font-size:13px}
+.eff{border:1px solid var(--line);background:none;padding:5px 8px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;color:var(--dim)}
+.eff.neg{color:var(--down);border-color:rgba(255,80,104,.55)} .eff.pos{color:var(--up);border-color:rgba(43,255,163,.55)}
+button.eff{box-shadow:inset 0 -2px 0 currentColor}
+.kv{display:grid;gap:4px}
+.kv div{display:flex;justify-content:space-between;gap:10px;font-size:13px;align-items:baseline}
+.kv .k{color:var(--dim)} .kv .v{font-family:var(--f-mono);font-weight:600;text-align:right}
+.kv .v small{display:block;font-weight:400;font-size:10px;color:var(--dim)}
+.why{font-size:12px;color:var(--dim)}
+.tag{font-size:9.5px;letter-spacing:.12em;color:var(--dim)}
+
+/* footer + sheet */
+.foot{font-size:11px;color:var(--dim);display:grid;gap:10px}
+.foot a{color:var(--cyan)}
+.btn{background:none;border:1px solid var(--cyan);color:var(--cyan);padding:9px 12px;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(2,4,10,.82);display:flex;align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.sheet .box{width:100%;max-width:440px;max-height:86vh;overflow:auto;background:var(--panel);border:1px solid var(--cyan);border-bottom:0;padding:16px}
+.sheet h2{margin:0 0 4px;font-size:16px;letter-spacing:.12em;text-transform:uppercase}
+.sheet p{margin:0 0 12px;font-size:12px;color:var(--dim)}
+.rgrid{display:grid;gap:10px}
+.rrow{display:grid;grid-template-columns:1fr 88px 112px;gap:8px;align-items:center;font-size:12px}
+.rrow .inp{width:100%}
+.rrow .inp.t{text-align:left}
+.sheet .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">Gold<b>//</b>Signal Deck</div>
+    <div class="clock num"><span id="clock">--:--:--</span><small>IST</small></div>
+  </header>
+  <div class="chips">
+    <span class="chip warn" id="chipGold"><i></i><span>Gold: connecting</span></span>
+    <span class="chip warn" id="chipFx"><i></i><span>FX: connecting</span></span>
+  </div>
+
+  <section class="panel" aria-label="Gold price in US dollars">
+    <div class="cap"><span>XAU / USD spot</span><span>per troy ounce</span></div>
+    <div class="price" id="price">$—</div>
+    <div class="row delta">
+      <span id="tick" class="flat">last tick —</span>
+      <span id="chg24" class="flat">24h —</span>
+    </div>
+    <svg class="spark" id="spark" viewBox="0 0 300 70" preserveAspectRatio="none" role="img" aria-label="Gold price over the last 24 hours"></svg>
+    <div class="row meta"><span id="lo24">24h low —</span><span id="hi24">24h high —</span></div>
+    <div class="meta" id="goldMeta">waiting for feed</div>
+    <div class="note" id="goldNote" hidden></div>
+  </section>
+
+  <section class="panel" aria-label="Pressure reading">
+    <div class="cap"><span>Pressure on gold now</span><span id="vcount">— / 6</span></div>
+    <div class="verdict" id="verdict">—</div>
+    <div class="vsub" id="vsub">—</div>
+    <div class="gauge"><div class="needle" id="needle" style="left:50%"></div></div>
+    <div class="gl"><span>FALL</span><span>MIXED</span><span>RISE</span></div>
+    <div class="cells" id="cells"></div>
+    <div class="fine">A reading of today's pressure from factors 01 to 06. It is not a forecast and not financial advice.</div>
+  </section>
+
+  <section class="panel" aria-label="India price estimate">
+    <div class="cap"><span>India price estimate</span>
+      <span class="seg" role="group" aria-label="Purity">
+        <button type="button" id="p24" aria-pressed="true">24K</button>
+        <button type="button" id="p22" aria-pressed="false">22K</button>
+      </span>
+    </div>
+    <div class="duo">
+      <div class="tile"><small>1 gram</small><span class="num" id="inr1">₹—</span></div>
+      <div class="tile"><small>8 gram · 1 pavan</small><span class="num" id="inr8">₹—</span></div>
+    </div>
+    <div class="calc num" id="calc"></div>
+    <div class="ctl">
+      <div class="line"><label for="gst">GST (3% gold, 5% making)</label>
+        <span class="seg" role="group" aria-label="GST"><button type="button" id="gstOn" aria-pressed="true">ON</button><button type="button" id="gstOff" aria-pressed="false">OFF</button></span></div>
+      <div class="line"><label>Making charge</label>
+        <span class="step"><button type="button" id="mkMinus" aria-label="Lower making charge">−</button><output id="mkVal">0%</output><button type="button" id="mkPlus" aria-label="Raise making charge">+</button></span></div>
+      <div class="line"><label for="inrOv">Your own USD/INR rate</label>
+        <input class="inp" id="inrOv" inputmode="decimal" placeholder="use feed" autocomplete="off"></div>
+    </div>
+    <div class="meta" id="fxMeta">USD/INR —</div>
+    <div class="fine">Estimate from the world price. Shop rates differ by local premium, discount and making charge.</div>
+  </section>
+
+  <div class="fhead">The 8 factors · latest record</div>
+  <div id="factors" style="display:grid;gap:14px"></div>
+
+  <footer class="foot">
+    <div class="row" style="align-items:center">
+      <span>Gold refresh</span>
+      <span class="seg" role="group" aria-label="Refresh interval">
+        <button type="button" data-iv="1" aria-pressed="true">1s</button>
+        <button type="button" data-iv="2" aria-pressed="false">2s</button>
+        <button type="button" data-iv="5" aria-pressed="false">5s</button>
+      </span>
+    </div>
+    <button type="button" class="btn" id="openSheet">Update the records</button>
+    <div>Feeds: gold from <a href="https://gold-api.com">gold-api.com</a> and <a href="https://xaus.com/api">xaus.com</a> (indicative mid-market, not a tradable quote). Currency from <a href="https://frankfurter.dev">Frankfurter</a> (ECB daily reference) with <a href="https://www.exchangerate-api.com">ExchangeRate-API</a> as backup. Dollar index is an estimate from those rates. Dated records come from BLS, the Federal Reserve, the World Gold Council and CBIC notices.</div>
+  </footer>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="sheetT">
+    <h2 id="sheetT">Update the records</h2>
+    <p>These numbers have no free live feed. Change them when new data comes out. Saved on this device only.</p>
+    <div class="rgrid" id="rgrid"></div>
+    <div class="acts">
+      <button type="button" class="btn" id="resetRec" style="border-color:var(--line);color:var(--dim)">Reset</button>
+      <button type="button" class="btn" id="closeSheet">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const OZ = 31.1034768;
+
+/* Snapshot shown until the feeds answer. Clearly labelled on screen. */
+const SNAP = {
+  gold: 3675.75, at: '19 Nov 2026, 22:45 IST',
+  fx: {INR:93.3, EUR:0.90975, JPY:159.97, GBP:0.76038, CAD:1.43, SEK:10.141, CHF:0.84261}, fxDate: '2026-11-19'
+};
+
+/* Dated records: no free live feed exists for these. Editable in the sheet. */
+const REC_SCHEMA = [
+  ['cpi',   'US CPI, month on month %', 'n'],
+  ['cpiy',  'US CPI, last annual %', 'n'],
+  ['fed',   'Fed funds range %', 't'],
+  ['hike',  'Odds of a December hike %', 'n'],
+  ['y10',   'US 10-year yield %', 'n'],
+  ['brent', 'Brent crude $/bbl', 'n'],
+  ['cbq',   'Central bank buying, quarter (t)', 'n'],
+  ['cby',   'Central bank buying, year to date (t)', 'n'],
+  ['zlo',   'Old gold floor, low $', 'n'],
+  ['zhi',   'Old gold floor, high $', 'n'],
+  ['duty',  'India import duty %', 'n']
+];
+const REC_DEF = {
+  cpi:{v:0.4,d:'Oct 2026'}, cpiy:{v:3.7,d:'Sep 2026'}, fed:{v:'3.75–4.00',d:'28 Oct 2026'},
+  hike:{v:82,d:'10 Nov 2026'}, y10:{v:4.97,d:'10 Nov 2026'}, brent:{v:91.7,d:'17 Nov 2026'},
+  cbq:{v:321,d:'Q3 2026'}, cby:{v:675,d:'Jan–Sep 2026'},
+  zlo:{v:3942.71,d:'broken 12 Nov'}, zhi:{v:3959.37,d:'broken 12 Nov'}, duty:{v:15,d:'since 13 May 2026'}
+};
+/* Manual effect presets, set from the news on 19 Nov 2026. -1 pushes gold down, +1 supports it. */
+const EFF_DEF = {f2:-1, f3:0, f5:1, f6:0};
+
+const KEY = 'goldSignalDeck.v1';
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+const set = Object.assign({purity:'24', gst:true, making:0, inrOv:'', iv:1}, saved.set);
+const eff = Object.assign({}, EFF_DEF, saved.eff);
+const rec = JSON.parse(JSON.stringify(REC_DEF));
+for (const k in (saved.rec || {})) if (rec[k]) Object.assign(rec[k], saved.rec[k]);
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify({set, eff, rec})); } catch (e) {} };
+
+const S = {
+  a: {price:null, ts:0, ok:0, fails:0, next:0, busy:false},   // gold-api.com
+  b: {price:null, ts:0, ok:0, next:0, busy:false},            // xaus.com
+  gold: SNAP.gold, goldSrc: 'snapshot', shownSrc: 'snapshot', goldTs: 0, lastShown: null, tick: 0,
+  intr: [], intrNext: 0,
+  fx: {rates: SNAP.fx, date: SNAP.fxDate, prev: null, prevDate: null, src: 'snapshot', ok: false}, fxNext: 0, fxBusy: false
+};
+
+/* ---------- helpers ---------- */
+const usd = (n, d = 2) => n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const sign = (n, d = 2) => (n > 0 ? '+' : n < 0 ? '−' : '') + usd(Math.abs(n), d);
+const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : 'flat';
+const istTime = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+const dShort = iso => { const d = new Date(iso + 'T00:00:00Z'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', timeZone:'UTC'}); };
+const ago = ms => { const s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? s + 's' : s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h'; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function getJSON(url, ms = 6000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { const r = await fetch(url, {signal:c.signal, cache:'no-store'}); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+function dxy(r) {
+  if (!r || ['EUR','JPY','GBP','CAD','SEK','CHF'].some(k => !(r[k] > 0))) return null;
+  return 50.14348112 * Math.pow(1 / r.EUR, -0.576) * Math.pow(r.JPY, 0.136) * Math.pow(1 / r.GBP, -0.119)
+       * Math.pow(r.CAD, 0.091) * Math.pow(r.SEK, 0.042) * Math.pow(r.CHF, 0.036);
+}
+
+/* ---------- feeds ---------- */
+async function pollGoldA(now) {
+  const a = S.a; if (a.busy || now < a.next) return; a.busy = true;
+  try {
+    const j = await getJSON('https://api.gold-api.com/price/XAU', 4000);
+    if (!(j && j.price > 0)) throw new Error('bad payload');
+    a.price = +j.price; a.ts = Date.parse(j.updatedAt) || Date.now(); a.ok = Date.now(); a.fails = 0; a.next = Date.now() + set.iv * 1000 - 150;
+  } catch (e) { a.fails++; a.next = Date.now() + Math.min(30000, 1000 * Math.pow(2, a.fails)); }
+  finally { a.busy = false; pickGold(); render(); }
+}
+async function pollGoldB(now) {
+  const b = S.b; if (b.busy || now < b.next) return; b.busy = true; b.next = now + 60000;   // xaus asks for 60 s caching
+  try {
+    const j = await getJSON('https://xaus.com/api/v1/spot?compact=1');
+    if (!(j && j.spot_usd_oz > 0)) throw new Error('bad payload');
+    b.price = +j.spot_usd_oz; b.ts = Date.parse(j.price_as_of || j.updated_at) || Date.now(); b.ok = Date.now();
+  } catch (e) {}
+  finally { b.busy = false; pickGold(); render(); }
+}
+function pickGold() {
+  const now = Date.now(), a = S.a, b = S.b;
+  const aFresh = a.price && now - a.ok < 20000, bFresh = b.price && now - b.ok < 180000;
+  let src = null;
+  if (aFresh && !(bFresh && b.ts - a.ts > 600000)) src = 'a';      // prefer the 1 s feed unless its price is 10+ min older
+  else if (bFresh) src = 'b';
+  else if (a.price) src = 'a'; else if (b.price) src = 'b';
+  if (!src) return;
+  const f = S[src];
+  S.gold = f.price; S.goldTs = f.ts; S.goldSrc = src === 'a' ? 'gold-api.com' : 'xaus.com';
+}
+async function pollIntraday(now) {
+  if (now < S.intrNext) return; S.intrNext = now + 300000;
+  try {
+    const j = await getJSON('https://xaus.com/api/v1/intraday?symbol=xau&hours=24');
+    const pts = (j.points || []).filter(p => p && p.p > 0 && p.t > 0);
+    if (pts.length > 1) { S.intr = pts; render(); }
+  } catch (e) { S.intrNext = now + 60000; }
+}
+async function pollFx(now) {
+  if (S.fxBusy || now < S.fxNext) return; S.fxBusy = true; S.fxNext = now + 1800000;
+  const syms = 'INR,EUR,JPY,GBP,CAD,SEK,CHF';
+  try {
+    const start = new Date(now - 12 * 864e5).toISOString().slice(0, 10);
+    const j = await getJSON(`https://api.frankfurter.dev/v1/${start}..?base=USD&symbols=${syms}`);
+    const ds = Object.keys(j.rates || {}).sort(); const last = ds[ds.length - 1];
+    if (!last || !(j.rates[last].INR > 0)) throw new Error('bad payload');
+    const p = ds.length > 1 ? ds[ds.length - 2] : null;
+    S.fx = {rates:j.rates[last], date:last, prev:p ? j.rates[p] : null, prevDate:p, src:'ECB reference via Frankfurter', ok:true};
+  } catch (e1) {
+    try {
+      const j = await getJSON(`https://api.frankfurter.dev/v1/latest?base=USD&symbols=${syms}`);
+      if (!(j.rates && j.rates.INR > 0)) throw new Error('bad payload');
+      S.fx = {rates:j.rates, date:j.date, prev:null, prevDate:null, src:'ECB reference via Frankfurter', ok:true};
+    } catch (e2) {
+      try {
+        const j = await getJSON('https://open.er-api.com/v6/latest/USD');
+        if (!(j.rates && j.rates.INR > 0)) throw new Error('bad payload');
+        const d = new Date((j.time_last_update_unix || now / 1000) * 1000).toISOString().slice(0, 10);
+        S.fx = {rates:j.rates, date:d, prev:null, prevDate:null, src:'ExchangeRate-API daily', ok:true};
+      } catch (e3) { S.fxNext = now + 60000; }
+    }
+  } finally { S.fxBusy = false; render(); }
+}
+
+/* ---------- derived ---------- */
+function usdInr() { const o = parseFloat(set.inrOv); return o > 20 && o < 500 ? {v:o, own:true} : {v:S.fx.rates.INR, own:false}; }
+function india() {
+  const fxr = usdInr().v, duty = +rec.duty.v || 0, pur = set.purity === '22' ? 22 / 24 : 1;
+  const world = S.gold / OZ * fxr;                 // per gram, 24K, before any tax
+  const landed = world * (1 + duty / 100);
+  const metal = landed * pur;
+  const making = metal * set.making / 100;
+  const gst = set.gst ? metal * 0.03 + making * 0.05 : 0;
+  return {world, dutyAmt: landed - world, pur, metal, making, gst, total: metal + making + gst, duty};
+}
+function effects() {
+  const d = dxy(S.fx.rates), dp = dxy(S.fx.prev), dchg = d && dp ? (d / dp - 1) * 100 : null;
+  let f1 = +rec.cpi.v >= 0.3 ? -1 : 0, f1how = 'CPI rule';
+  if (dchg !== null && Math.abs(dchg) >= 0.1) { f1 = dchg > 0 ? -1 : 1; f1how = 'dollar move'; }
+  const f4 = S.gold < +rec.zlo.v ? -1 : S.gold > +rec.zhi.v ? 1 : 0;
+  const ir = S.fx.rates.INR, ip = S.fx.prev && S.fx.prev.INR, ichg = ir && ip ? (ir / ip - 1) * 100 : null;
+  return {f1, f2:eff.f2, f3:eff.f3, f4, f5:eff.f5, f6:eff.f6, d, dchg, ichg, f1how};
+}
+
+/* ---------- render ---------- */
+let flashT = 0;
+function renderHero(now) {
+  const el = $('price');
+  const firstLive = S.shownSrc === 'snapshot' && S.goldSrc !== 'snapshot';
+  S.shownSrc = S.goldSrc;
+  if (!firstLive && S.lastShown !== null && S.gold !== S.lastShown) {
+    S.tick = S.gold - S.lastShown;
+    el.classList.remove('up', 'down'); el.classList.add(S.tick > 0 ? 'up' : 'down');
+    clearTimeout(flashT); flashT = setTimeout(() => el.classList.remove('up', 'down'), 650);
+  }
+  S.lastShown = S.gold;
+  el.textContent = '$' + usd(S.gold);
+  const t = $('tick'); t.className = cls(S.tick);
+  t.textContent = 'last tick ' + (S.tick ? (S.tick > 0 ? '▲ ' : '▼ ') + sign(S.tick) : '—');
+
+  const pts = S.intr.map(p => ({t:p.t * 1000, p:p.p}));
+  if (S.goldSrc !== 'snapshot') pts.push({t:now, p:S.gold});
+  const c = $('chg24');
+  if (pts.length > 2) {
+    const base = pts[0].p, ch = S.gold - base, pc = ch / base * 100;
+    c.className = cls(ch); c.textContent = `24h ${sign(ch)} (${sign(pc)}%)`;
+    const ps = pts.map(p => p.p), lo = Math.min(...ps), hi = Math.max(...ps);
+    $('lo24').textContent = '24h low $' + usd(lo); $('hi24').textContent = '24h high $' + usd(hi);
+    drawSpark(pts, lo, hi, ch >= 0);
+  } else { c.className = 'flat'; c.textContent = '24h —'; }
+
+  const chip = $('chipGold'), live = S.goldSrc !== 'snapshot', a = S.a, b = S.b;
+  const lastOk = Math.max(a.ok, b.ok), age = S.goldTs ? now - S.goldTs : 0;
+  if (!live) {
+    const failed = a.fails >= 3 && !b.ok;
+    chip.className = 'chip ' + (failed ? 'bad' : 'warn');
+    chip.lastElementChild.textContent = failed ? 'Gold: feed offline' : 'Gold: snapshot';
+    $('goldMeta').textContent = `snapshot from ${SNAP.at}`;
+    $('goldNote').hidden = !failed;
+    $('goldNote').textContent = 'Could not reach the gold feeds. Check the internet connection. The number above is a saved snapshot, not a live price.';
+  } else {
+    const fresh = now - lastOk < 15000 || (S.goldSrc === 'xaus.com' && now - b.ok < 180000);
+    chip.className = 'chip ' + (fresh ? 'ok' : 'bad');
+    chip.lastElementChild.textContent = fresh ? (S.goldSrc === 'xaus.com' ? 'Gold: live · 60s feed' : 'Gold: live') : 'Gold: retrying';
+    $('goldMeta').textContent = `${S.goldSrc} · price time ${istTime.format(S.goldTs)} IST · checked ${ago(now - lastOk)} ago`;
+    const old = age > 1800000;
+    $('goldNote').hidden = !old;
+    if (old) $('goldNote').textContent = `This price is ${ago(age)} old. The market may be closed, or the feed is delayed.`;
+  }
+}
+function drawSpark(pts, lo, hi, up) {
+  const W = 300, H = 70, pad = 4, t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = (hi - lo) || 1;
+  const X = t => (t - t0) / ((t1 - t0) || 1) * W, Y = p => pad + (1 - (p - lo) / span) * (H - 2 * pad);
+  let d = ''; pts.forEach((p, i) => { d += (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p.p).toFixed(1); });
+  const col = up ? 'var(--up)' : 'var(--down)', last = pts[pts.length - 1];
+  $('spark').innerHTML =
+    `<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${up ? '#2bffa3' : '#ff5068'}" stop-opacity=".35"/><stop offset="1" stop-color="${up ? '#2bffa3' : '#ff5068'}" stop-opacity="0"/></linearGradient></defs>` +
+    [0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${H * f}" y2="${H * f}" stroke="rgba(39,228,255,.12)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('') +
+    `<path d="${d}L${W} ${H}L0 ${H}Z" fill="url(#sg)"/>` +
+    `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` +
+    `<circle cx="${Math.min(W - 3, X(last.t)).toFixed(1)}" cy="${Y(last.p).toFixed(1)}" r="3" fill="#fff"/>`;
+}
+function renderVerdict(e) {
+  const ids = ['f1','f2','f3','f4','f5','f6'], vals = ids.map(k => e[k]);
+  const sum = vals.reduce((a, b) => a + b, 0), dn = vals.filter(v => v < 0).length, up = vals.filter(v => v > 0).length;
+  const v = $('verdict');
+  v.textContent = sum <= -2 ? 'Fall pressure' : sum >= 2 ? 'Rise pressure' : 'Mixed';
+  v.className = 'verdict ' + (sum <= -2 ? 'neg' : sum >= 2 ? 'pos' : 'flat');
+  $('vsub').textContent = `${dn} push down · ${up} support · ${6 - dn - up} neutral`;
+  $('vcount').textContent = `score ${sum > 0 ? '+' : sum < 0 ? '−' : ''}${Math.abs(sum)} / 6`;
+  $('needle').style.left = ((sum + 6) / 12 * 100) + '%';
+  $('cells').innerHTML = vals.map((x, i) => `<div class="cell ${cls(x)}">0${i + 1}<b>${x < 0 ? '▼' : x > 0 ? '▲' : '●'}</b></div>`).join('');
+}
+function renderIndia() {
+  const c = india(), f = usdInr();
+  $('inr1').textContent = inr(c.total); $('inr8').textContent = inr(c.total * 8);
+  const rows = [
+    ['World price, 24K / g', inr(c.world)],
+    [`+ Import duty ${c.duty}%`, inr(c.dutyAmt)]
+  ];
+  if (set.purity === '22') rows.push(['× 22K purity (22/24)', inr(c.metal)]);
+  if (set.making > 0) rows.push([`+ Making ${set.making}%`, inr(c.making)]);
+  if (set.gst) rows.push(['+ GST', inr(c.gst)]);
+  $('calc').innerHTML = rows.map(r => `<div><span>${r[0]}</span><span>${r[1]}</span></div>`).join('') +
+    `<div class="tot"><span>= ${set.purity}K per gram</span><span>${inr(c.total)}</span></div>`;
+  $('fxMeta').textContent = f.own ? `USD/INR ${usd(f.v)} · your own rate`
+    : `USD/INR ${usd(f.v)} · ${S.fx.src}${S.fx.src === 'snapshot' ? '' : ', ' + dShort(S.fx.date)} · updates once a day`;
+  const chip = $('chipFx');
+  chip.className = 'chip ' + (S.fx.ok ? 'ok' : 'warn');
+  chip.lastElementChild.textContent = S.fx.ok ? 'FX: daily fix ' + dShort(S.fx.date) : 'FX: snapshot';
+  $('mkVal').textContent = set.making + '%';
+  $('p24').setAttribute('aria-pressed', set.purity === '24'); $('p22').setAttribute('aria-pressed', set.purity === '22');
+  $('gstOn').setAttribute('aria-pressed', set.gst); $('gstOff').setAttribute('aria-pressed', !set.gst);
+}
+const effLabel = v => v < 0 ? '▼ Pushes down' : v > 0 ? '▲ Supports' : '● Neutral';
+function renderFactors(e) {
+  const gap = S.gold - (+rec.zlo.v), fxDay = S.fx.src === 'snapshot' ? 'snapshot' : 'fix ' + dShort(S.fx.date);
+  const kv = (k, v, d) => `<div><span class="k">${k}</span><span class="v">${v}${d ? `<small>${esc(d)}</small>` : ''}</span></div>`;
+  const F = [
+    {n:1, name:'US inflation and dollar', e:e.f1, auto:'auto · ' + e.f1how, why:'Hot inflation and a strong dollar push gold down.',
+     rows: kv('CPI, month on month', `+${usd(+rec.cpi.v, 1)}%`, rec.cpi.d) + kv('CPI, last annual', `${usd(+rec.cpiy.v, 1)}%`, rec.cpiy.d) +
+           kv('Dollar index (est.)', e.d ? usd(e.d) : '—', e.dchg !== null ? `${sign(e.dchg)}% on the day · ${fxDay}` : fxDay)},
+    {n:2, name:'US interest rates', e:e.f2, key:'f2', why:'High rates make gold less attractive because gold pays no interest.',
+     rows: kv('Fed funds range', esc(rec.fed.v) + '%', rec.fed.d) + kv('10-year yield', usd(+rec.y10.v) + '%', rec.y10.d) + kv('Odds of December hike', usd(+rec.hike.v, 0) + '%', rec.hike.d)},
+    {n:3, name:'Middle East and oil', e:e.f3, key:'f3', why:'Rising oil means more inflation fear, which has been hurting gold.',
+     rows: kv('Brent crude', '$' + usd(+rec.brent.v), rec.brent.d)},
+    {n:4, name:'Technical level', e:e.f4, auto:'auto · live price', why:'Gold broke its old floor. While it stays below, sellers are in control.',
+     rows: kv('Old floor zone', `$${usd(+rec.zlo.v, 0)}–$${usd(+rec.zhi.v, 0)}`, rec.zlo.d) + kv('Gold vs floor', (gap < 0 ? '−$' : '+$') + usd(Math.abs(gap)), 'live')},
+    {n:5, name:'Central bank buying', e:e.f5, key:'f5', why:'Central banks keep buying, which puts a floor under the price.',
+     rows: kv('Net buying, quarter', usd(+rec.cbq.v, 0) + ' t', rec.cbq.d) + kv('Net buying, year to date', usd(+rec.cby.v, 0) + ' t', rec.cby.d)},
+    {n:6, name:'US–China and trade shocks', e:e.f6, key:'f6', why:'A new shock brings safe-haven buying. Change this chip when news breaks.',
+     rows: kv('Status', eff.f6 > 0 ? 'Shock active' : eff.f6 < 0 ? 'Tension easing' : 'No new shock', 'manual')},
+    {n:7, name:'Rupee vs dollar', inrOnly: e.ichg === null ? '₹ price only' : e.ichg > 0.02 ? '▲ Lifts ₹ price' : e.ichg < -0.02 ? '▼ Lowers ₹ price' : '● Flat', ie: e.ichg, why:'A weaker rupee raises the India price even when dollar gold falls.',
+     rows: kv('USD/INR', usd(S.fx.rates.INR), e.ichg !== null ? `${sign(e.ichg)}% on the day · ${fxDay}` : fxDay)},
+    {n:8, name:'India import duty', inrOnly:'▲ Adds to ₹ price', ie:1, why:'Charged on top of the world price for all imported gold.',
+     rows: kv('Customs duty', usd(+rec.duty.v, 0) + '%', rec.duty.d) + kv('GST on gold', '3%', 'plus 5% on making')}
+  ];
+  $('factors').innerHTML = F.map(f => {
+    let chip;
+    if (f.inrOnly) chip = `<span class="eff ${cls(f.ie || 0)}">${f.inrOnly}</span>`;
+    else if (f.key) chip = `<button type="button" class="eff ${cls(f.e)}" data-eff="${f.key}" aria-label="Effect of ${f.name}: ${effLabel(f.e)}. Tap to change.">${effLabel(f.e)}</button>`;
+    else chip = `<span class="eff ${cls(f.e)}">${effLabel(f.e)}</span>`;
+    const tag = f.inrOnly ? 'not in the score' : f.key ? 'tap chip to change' : f.auto;
+    return `<section class="panel fcard"><div class="ftop"><div class="fname"><span class="num">0${f.n}</span>${f.name}</div>${chip}</div>
+      <div class="kv">${f.rows}</div><div class="why">${f.why}</div><div class="tag">${tag.toUpperCase()}</div></section>`;
+  }).join('');
+}
+let lastFactorKey = '';
+function render() {
+  const now = Date.now();
+  $('clock').textContent = istTime.format(now);
+  renderHero(now);
+  const e = effects();
+  renderVerdict(e);
+  renderIndia();
+  const key = JSON.stringify([e, rec, eff, S.fx.date, S.fx.src, Math.round(S.gold)]);   // rebuild cards only when something they show changed
+  if (key !== lastFactorKey) { lastFactorKey = key; renderFactors(e); }
+}
+
+/* ---------- controls ---------- */
+const on = (id, fn) => $(id).addEventListener('click', () => { fn(); save(); render(); });
+on('p24', () => set.purity = '24'); on('p22', () => set.purity = '22');
+on('gstOn', () => set.gst = true); on('gstOff', () => set.gst = false);
+on('mkMinus', () => set.making = Math.max(0, set.making - 1)); on('mkPlus', () => set.making = Math.min(30, set.making + 1));
+$('inrOv').value = set.inrOv;
+$('inrOv').addEventListener('input', ev => { set.inrOv = ev.target.value.trim(); save(); render(); });
+$('factors').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-eff]'); if (!b) return;
+  const k = b.dataset.eff; eff[k] = eff[k] === -1 ? 0 : eff[k] === 0 ? 1 : -1; save(); render();
+});
+document.querySelectorAll('[data-iv]').forEach(b => {
+  b.setAttribute('aria-pressed', +b.dataset.iv === set.iv);
+  b.addEventListener('click', () => { set.iv = +b.dataset.iv; S.a.next = 0; save();
+    document.querySelectorAll('[data-iv]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+});
+function buildSheet() {
+  $('rgrid').innerHTML = REC_SCHEMA.map(([k, label, type]) =>
+    `<div class="rrow"><label for="r_${k}">${label}</label>
+      <input class="inp ${type === 't' ? 't' : ''}" id="r_${k}" data-k="${k}" data-f="v" ${type === 'n' ? 'inputmode="decimal"' : ''} value="${esc(rec[k].v)}" aria-label="${label} value">
+      <input class="inp t" id="d_${k}" data-k="${k}" data-f="d" value="${esc(rec[k].d || '')}" aria-label="${label} date"></div>`).join('');
+}
+$('rgrid').addEventListener('input', ev => {
+  const t = ev.target, k = t.dataset.k; if (!k) return;
+  const type = REC_SCHEMA.find(r => r[0] === k)[2];
+  if (t.dataset.f === 'v') { if (type === 'n') { const n = parseFloat(t.value); if (isFinite(n)) rec[k].v = n; } else rec[k].v = t.value; }
+  else rec[k].d = t.value;
+  save(); render();
+});
+$('openSheet').addEventListener('click', () => { buildSheet(); $('sheet').hidden = false; $('closeSheet').focus(); });
+$('closeSheet').addEventListener('click', () => { $('sheet').hidden = true; $('openSheet').focus(); });
+$('sheet').addEventListener('click', ev => { if (ev.target === $('sheet')) $('sheet').hidden = true; });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') $('sheet').hidden = true; });
+$('resetRec').addEventListener('click', () => {
+  for (const k in REC_DEF) rec[k] = Object.assign({}, REC_DEF[k]);
+  Object.assign(eff, EFF_DEF); save(); buildSheet(); render();
+});
+
+/* ---------- loop: the screen redraws every second; network calls follow their own timers ---------- */
+function loop() {
+  const now = Date.now();
+  if (!document.hidden) { pollGoldA(now); pollGoldB(now); pollIntraday(now); pollFx(now); }
+  render();
+}
+loop();
+setInterval(loop, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { S.a.next = 0; loop(); } });
+})();
+</script>
+</body>
+</html>
