@@ -60,6 +60,8 @@ button{cursor:pointer}
 .panel::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--mag);border-right:2px solid var(--mag)}
 .cap{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
 .cap span:first-child{color:var(--cyan)}
+.cap.sub{margin:14px 0 6px}
+.calc .tm{color:var(--dim)}
 
 /* hero */
 .price{font-family:var(--f-mono);font-weight:700;font-size:clamp(40px,13.5vw,58px);line-height:1;color:var(--gold);
@@ -177,6 +179,20 @@ button.eff{box-shadow:inset 0 -2px 0 currentColor}
     <div class="fine">A reading of today's pressure from factors 01 to 06. It is not a forecast and not financial advice.</div>
   </section>
 
+  <section class="panel" aria-label="GRT gold rate today">
+    <div class="cap"><span>GRT rate · Chennai</span><span id="shopDay">—</span></div>
+    <div class="duo">
+      <div class="tile"><small id="shopL1">1 gram</small><span class="num" id="shop1">₹—</span></div>
+      <div class="tile"><small>8 gram · 1 pavan</small><span class="num" id="shop8">₹—</span></div>
+    </div>
+    <div class="calc num" id="shopRows"></div>
+    <div class="cap sub"><span>Rate changes today</span><span id="shopCnt"></span></div>
+    <div class="calc num" id="shopLog"></div>
+    <div class="meta" id="shopMeta">—</div>
+    <div class="note" id="shopNote" hidden></div>
+    <div class="fine">GRT's board rate, before GST and making charge. Follows the 22K / 24K switch in the panel below. Each time shows when the checker first saw that rate, within about 15 minutes of GRT's change.</div>
+  </section>
+
   <section class="panel" aria-label="India price estimate">
     <div class="cap"><span>India price estimate</span>
       <span class="seg" role="group" aria-label="Purity">
@@ -214,7 +230,7 @@ button.eff{box-shadow:inset 0 -2px 0 currentColor}
       </span>
     </div>
     <button type="button" class="btn" id="openSheet">Update the records</button>
-    <div>Feeds: gold from <a href="https://gold-api.com">gold-api.com</a> and <a href="https://xaus.com/api">xaus.com</a> (indicative mid-market, not a tradable quote). Currency from <a href="https://frankfurter.dev">Frankfurter</a> (ECB daily reference) with <a href="https://www.exchangerate-api.com">ExchangeRate-API</a> as backup. Dollar index is an estimate from those rates. Dated records come from BLS, the Federal Reserve, the World Gold Council and CBIC notices.</div>
+    <div>Feeds: gold from <a href="https://gold-api.com">gold-api.com</a> and <a href="https://xaus.com/api">xaus.com</a> (indicative mid-market, not a tradable quote). Currency from <a href="https://frankfurter.dev">Frankfurter</a> (ECB daily reference) with <a href="https://www.exchangerate-api.com">ExchangeRate-API</a> as backup. Dollar index is an estimate from those rates. The GRT rate is GRT Jewellers' published board rate, read every 15 minutes by a scheduled checker in this site's repository and saved in grt-rate.json. Dated records come from BLS, the Federal Reserve, the World Gold Council and CBIC notices.</div>
   </footer>
 </div>
 
@@ -241,6 +257,12 @@ const SNAP = {
   gold: 3675.75, at: '19 Nov 2026, 22:45 IST',
   fx: {INR:93.3, EUR:0.90975, JPY:159.97, GBP:0.76038, CAD:1.43, SEK:10.141, CHF:0.84261}, fxDate: '2026-11-19'
 };
+
+/* GRT board rate. The live copy is grt-rate.json beside this page, kept current by the repository's scheduled checker.
+   This saved copy is shown only when that file cannot be loaded (for example when the page is opened as a local file). */
+const SHOP_SEED = {date:'2026-11-19', k22:11980, k24:13069, updated_at:null,
+  updates:[{at:null, k22:11980, k24:13069}], prev:{date:'2026-11-18', k22:12215, k24:13325},
+  source:'GRT Chennai via livechennai.com', status:'ok', checked_at:'2026-11-19T23:40:00+05:30'};
 
 /* Dated records: no free live feed exists for these. Editable in the sheet. */
 const REC_SCHEMA = [
@@ -278,7 +300,7 @@ const S = {
   a: {price:null, ts:0, ok:0, fails:0, next:0, busy:false},   // gold-api.com
   b: {price:null, ts:0, ok:0, next:0, busy:false},            // xaus.com
   gold: SNAP.gold, goldSrc: 'snapshot', shownSrc: 'snapshot', goldTs: 0, lastShown: null, tick: 0,
-  intr: [], intrNext: 0,
+  intr: [], intrNext: 0, shop: SHOP_SEED, shopLive: null, shopNext: 0,
   fx: {rates: SNAP.fx, date: SNAP.fxDate, prev: null, prevDate: null, src: 'snapshot', ok: false}, fxNext: 0, fxBusy: false
 };
 
@@ -340,6 +362,15 @@ async function pollIntraday(now) {
     const pts = (j.points || []).filter(p => p && p.p > 0 && p.t > 0);
     if (pts.length > 1) { S.intr = pts; render(); }
   } catch (e) { S.intrNext = now + 60000; }
+}
+async function pollShop(now) {
+  if (now < S.shopNext) return; S.shopNext = now + 120000;
+  try {
+    const j = await getJSON('grt-rate.json?t=' + Math.floor(now / 60000));
+    if (!(j && j.k22 > 0 && j.k24 > 0 && j.date)) throw new Error('bad payload');
+    S.shop = j; S.shopLive = true;
+  } catch (e) { if (S.shopLive !== true) S.shopLive = false; }
+  finally { render(); }
 }
 async function pollFx(now) {
   if (S.fxBusy || now < S.fxNext) return; S.fxBusy = true; S.fxNext = now + 1800000;
@@ -477,6 +508,43 @@ function renderIndia() {
   $('p24').setAttribute('aria-pressed', set.purity === '24'); $('p22').setAttribute('aria-pressed', set.purity === '22');
   $('gstOn').setAttribute('aria-pressed', set.gst); $('gstOff').setAttribute('aria-pressed', !set.gst);
 }
+const istDay = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Kolkata'});
+const istHM = new Intl.DateTimeFormat('en-IN', {timeZone:'Asia/Kolkata', hour:'numeric', minute:'2-digit', hour12:true});
+const istHour = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Kolkata', hour:'2-digit', hour12:false});
+const atIST = iso => { const t = Date.parse(iso || ''); return isNaN(t) ? null : istHM.format(t).toUpperCase(); };
+const moved = d => d > 0 ? `<span class="pos">▲ ${inr(d)}</span>` : d < 0 ? `<span class="neg">▼ ${inr(-d)}</span>` : '<span class="flat">no change</span>';
+function renderShop(now) {
+  const s = S.shop, key = set.purity === '22' ? 'k22' : 'k24', other = key === 'k22' ? 'k24' : 'k22', k = +s[key];
+  const today = istDay.format(now), stale = s.date !== today;
+  $('shopDay').textContent = (stale ? 'Last rate ' : 'Today · ') + dShort(s.date);
+  $('shopL1').textContent = `1 gram · ${set.purity}K`;
+  $('shop1').textContent = inr(k); $('shop8').textContent = inr(k * 8);
+
+  const rows = [[`${other === 'k24' ? '24K' : '22K'} per gram`, inr(+s[other])]];
+  const p = s.prev && +s.prev[key];
+  if (p > 0) rows.push([`vs ${dShort(s.prev.date)}`, moved(k - p)]);
+  const gap = k - india().metal;
+  rows.push(['vs world estimate (no GST)', (gap < 0 ? '−' : '+') + inr(Math.abs(gap))]);
+  $('shopRows').innerHTML = rows.map(r => `<div><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+
+  const ups = (Array.isArray(s.updates) ? s.updates : []).filter(u => u && +u[key] > 0);
+  $('shopCnt').textContent = ups.length ? `${ups.length} ${ups.length === 1 ? 'rate' : 'rates'}` : '';
+  $('shopLog').innerHTML = ups.length ? ups.map((u, i) => {
+    const t = atIST(u.at), d = i ? +u[key] - +ups[i - 1][key] : 0;
+    return `<div><span class="tm">${t ? 'Seen ' + t : 'Time not recorded'}${i === 0 ? ' · first' : ''}</span><span>${inr(+u[key])}${i ? ' ' + moved(d) : ''}</span></div>`;
+  }).join('') : '<div><span class="tm">No rate seen yet</span><span></span></div>';
+
+  const chk = Date.parse(s.checked_at || ''), h = +istHour.format(now), notes = [];
+  if (S.shopLive === false) notes.push('Showing a saved copy. The live GRT rate loads on the hosted page.');
+  if (stale) notes.push(`GRT's rate for today has not been seen yet. Showing ${dShort(s.date)}.`);
+  else if (ups.length > 1) { const a = ups[ups.length - 1], f = ups[0], d = +a[key] - +f[key];
+    notes.push(`Rate changed again${atIST(a.at) ? ' at ' + atIST(a.at) : ''}: ${set.purity}K ${d < 0 ? 'down' : 'up'} ${inr(Math.abs(d))} from the first rate today.`); }
+  if (s.status === 'error') notes.push('The last check could not read GRT\'s rate. It will try again in 15 minutes.');
+  if (S.shopLive && !isNaN(chk) && now - chk > 7200000 && h >= 10 && h <= 21) notes.push(`The checker last ran ${ago(now - chk)} ago.`);
+  $('shopNote').hidden = !notes.length; $('shopNote').textContent = notes.join(' ');
+  $('shopMeta').textContent = `${s.source || 'GRT'}${isNaN(chk) ? '' : ' · checked ' + ago(now - chk) + ' ago'}`;
+}
+
 const effLabel = v => v < 0 ? '▼ Pushes down' : v > 0 ? '▲ Supports' : '● Neutral';
 function renderFactors(e) {
   const gap = S.gold - (+rec.zlo.v), fxDay = S.fx.src === 'snapshot' ? 'snapshot' : 'fix ' + dShort(S.fx.date);
@@ -518,6 +586,7 @@ function render() {
   const e = effects();
   renderVerdict(e);
   renderIndia();
+  renderShop(now);
   const key = JSON.stringify([e, rec, eff, S.fx.date, S.fx.src, Math.round(S.gold)]);   // rebuild cards only when something they show changed
   if (key !== lastFactorKey) { lastFactorKey = key; renderFactors(e); }
 }
@@ -563,7 +632,7 @@ $('resetRec').addEventListener('click', () => {
 /* ---------- loop: the screen redraws every second; network calls follow their own timers ---------- */
 function loop() {
   const now = Date.now();
-  if (!document.hidden) { pollGoldA(now); pollGoldB(now); pollIntraday(now); pollFx(now); }
+  if (!document.hidden) { pollGoldA(now); pollGoldB(now); pollIntraday(now); pollFx(now); pollShop(now); }
   render();
 }
 loop();
