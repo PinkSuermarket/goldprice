@@ -186,11 +186,11 @@ button.eff{box-shadow:inset 0 -2px 0 currentColor}
       <div class="tile"><small>8 gram · 1 pavan</small><span class="num" id="shop8">₹—</span></div>
     </div>
     <div class="calc num" id="shopRows"></div>
-    <div class="cap sub"><span>Rate changes today</span><span id="shopCnt"></span></div>
+    <div class="cap sub"><span id="shopLogT">Hourly readings today</span><span id="shopCnt"></span></div>
     <div class="calc num" id="shopLog"></div>
     <div class="meta" id="shopMeta">—</div>
     <div class="note" id="shopNote" hidden></div>
-    <div class="fine">GRT's board rate, before GST and making charge. Follows the 22K / 24K switch in the panel below. Each time shows when the checker first saw that rate, within about 15 minutes of GRT's change.</div>
+    <div class="fine">GRT's board rate, before GST and making charge. Follows the 22K / 24K switch in the panel below. The checker reads GRT's rate every hour from 9 AM to 9 PM. Each time is when that reading was taken; GitHub sometimes starts a run late.</div>
   </section>
 
   <section class="panel" aria-label="India price estimate">
@@ -230,7 +230,7 @@ button.eff{box-shadow:inset 0 -2px 0 currentColor}
       </span>
     </div>
     <button type="button" class="btn" id="openSheet">Update the records</button>
-    <div>Feeds: gold from <a href="https://gold-api.com">gold-api.com</a> and <a href="https://xaus.com/api">xaus.com</a> (indicative mid-market, not a tradable quote). Currency from <a href="https://frankfurter.dev">Frankfurter</a> (ECB daily reference) with <a href="https://www.exchangerate-api.com">ExchangeRate-API</a> as backup. Dollar index is an estimate from those rates. The GRT rate is GRT Jewellers' published board rate, read every 15 minutes by a scheduled checker in this site's repository and saved in grt-rate.json. Dated records come from BLS, the Federal Reserve, the World Gold Council and CBIC notices.</div>
+    <div>Feeds: gold from <a href="https://gold-api.com">gold-api.com</a> and <a href="https://xaus.com/api">xaus.com</a> (indicative mid-market, not a tradable quote). Currency from <a href="https://frankfurter.dev">Frankfurter</a> (ECB daily reference) with <a href="https://www.exchangerate-api.com">ExchangeRate-API</a> as backup. Dollar index is an estimate from those rates. The GRT rate is GRT Jewellers' published board rate, read every hour from 9 AM to 9 PM by a scheduled checker in this site's repository, saved in grt-rate.json, with every reading kept in grt-history.csv. Dated records come from BLS, the Federal Reserve, the World Gold Council and CBIC notices.</div>
   </footer>
 </div>
 
@@ -260,9 +260,9 @@ const SNAP = {
 
 /* GRT board rate. The live copy is grt-rate.json beside this page, kept current by the repository's scheduled checker.
    This saved copy is shown only when that file cannot be loaded (for example when the page is opened as a local file). */
-const SHOP_SEED = {date:'2026-11-19', k22:11980, k24:13069, updated_at:null,
-  updates:[{at:null, k22:11980, k24:13069}], prev:{date:'2026-11-18', k22:12215, k24:13325},
-  source:'GRT Chennai via livechennai.com', status:'ok', checked_at:'2026-11-19T23:40:00+05:30'};
+const SHOP_SEED = {date:'2026-11-20', k22:11510, k24:12556, updated_at:null,
+  updates:[{at:null, k22:11510, k24:12556}], hourly:[], prev:{date:'2026-11-19', k22:11980, k24:13069},
+  source:'GRT Chennai via livechennai.com', status:'ok', checked_at:'2026-11-20T21:45:00+05:30'};
 
 /* Dated records: no free live feed exists for these. Editable in the sheet. */
 const REC_SCHEMA = [
@@ -528,19 +528,23 @@ function renderShop(now) {
   $('shopRows').innerHTML = rows.map(r => `<div><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
 
   const ups = (Array.isArray(s.updates) ? s.updates : []).filter(u => u && +u[key] > 0);
-  $('shopCnt').textContent = ups.length ? `${ups.length} ${ups.length === 1 ? 'rate' : 'rates'}` : '';
-  $('shopLog').innerHTML = ups.length ? ups.map((u, i) => {
-    const t = atIST(u.at), d = i ? +u[key] - +ups[i - 1][key] : 0;
-    return `<div><span class="tm">${t ? 'Seen ' + t : 'Time not recorded'}${i === 0 ? ' · first' : ''}</span><span>${inr(+u[key])}${i ? ' ' + moved(d) : ''}</span></div>`;
-  }).join('') : '<div><span class="tm">No rate seen yet</span><span></span></div>';
+  const hrs = (Array.isArray(s.hourly) ? s.hourly : []).filter(u => u && +u[key] > 0 && u.at);
+  const list = hrs.length ? hrs : ups, hourly = hrs.length > 0;
+  $('shopLogT').textContent = hourly ? `Hourly readings · ${dShort(s.date)}` : 'Rate seen';
+  $('shopCnt').textContent = hourly ? `${hrs.length} ${hrs.length === 1 ? 'reading' : 'readings'}` : '';
+  $('shopLog').innerHTML = list.length ? list.map((u, i) => {
+    const t = atIST(u.at), d = i ? +u[key] - +list[i - 1][key] : 0;
+    const tail = i ? (d ? ' ' + moved(d) : ' <span class="flat">same</span>') : '';
+    return `<div><span class="tm">${t || 'Time not recorded'}</span><span>${inr(+u[key])}${tail}</span></div>`;
+  }).join('') : '<div><span class="tm">No reading yet today</span><span></span></div>';
 
   const chk = Date.parse(s.checked_at || ''), h = +istHour.format(now), notes = [];
   if (S.shopLive === false) notes.push('Showing a saved copy. The live GRT rate loads on the hosted page.');
   if (stale) notes.push(`GRT's rate for today has not been seen yet. Showing ${dShort(s.date)}.`);
   else if (ups.length > 1) { const a = ups[ups.length - 1], f = ups[0], d = +a[key] - +f[key];
     notes.push(`Rate changed again${atIST(a.at) ? ' at ' + atIST(a.at) : ''}: ${set.purity}K ${d < 0 ? 'down' : 'up'} ${inr(Math.abs(d))} from the first rate today.`); }
-  if (s.status === 'error') notes.push('The last check could not read GRT\'s rate. It will try again in 15 minutes.');
-  if (S.shopLive && !isNaN(chk) && now - chk > 7200000 && h >= 10 && h <= 21) notes.push(`The checker last ran ${ago(now - chk)} ago.`);
+  if (s.status === 'error') notes.push('The last check could not read GRT\'s rate. It will try again next hour.');
+  if (S.shopLive && !isNaN(chk) && now - chk > 2.5 * 3600000 && h >= 11 && h <= 21) notes.push(`The checker last ran ${ago(now - chk)} ago.`);
   $('shopNote').hidden = !notes.length; $('shopNote').textContent = notes.join(' ');
   $('shopMeta').textContent = `${s.source || 'GRT'}${isNaN(chk) ? '' : ' · checked ' + ago(now - chk) + ' ago'}`;
 }

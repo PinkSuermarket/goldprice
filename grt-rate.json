@@ -1,23 +1,24 @@
 {
-  "date": "2026-11-19",
-  "k22": 11980,
-  "k24": 13069,
+  "date": "2026-11-20",
+  "k22": 11510,
+  "k24": 12556,
   "updated_at": null,
   "updates": [
     {
       "at": null,
-      "k22": 11980,
-      "k24": 13069
+      "k22": 11510,
+      "k24": 12556
     }
   ],
+  "hourly": [],
   "prev": {
-    "date": "2026-11-18",
-    "k22": 12215,
-    "k24": 13325
+    "date": "2026-11-19",
+    "k22": 11980,
+    "k24": 13069
   },
   "source": "GRT Chennai via livechennai.com",
   "source_url": "https://www.livechennai.com/grt_jewellery_gold_rate.asp",
   "status": "ok",
   "error": "",
-  "checked_at": "2026-11-19T23:40:00+05:30"
+  "checked_at": "2026-11-20T21:45:00+05:30"
 }

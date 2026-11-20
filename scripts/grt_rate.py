@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Keep grt-rate.json in step with GRT Jewellers' published gold board rate.
 
-Runs in GitHub Actions every 15 minutes (see .github/workflows/grt-rate.yml).
-Standard library only. The file it writes is read by gold-signal-deck.html.
+Runs in GitHub Actions every hour from 9 AM to 9 PM IST (see .github/workflows/grt-rate.yml).
+Standard library only. grt-rate.json is read by gold-signal-deck.html; every reading is
+also added as a row to grt-history.csv, so the hourly record builds up day by day.
 
 Sources, in order:
   1. grtjewels.com home page (rate text such as "GOLD - 22KT - 1 g - Rs 11980")
   2. livechennai.com GRT Chennai table (one dated row per day)
 
-Each new rate is stored with the time this script first saw it, so a morning
-rate and an evening revision both show with their own time.
+Each run stores that hour's reading in "hourly". A rate that differs from the
+previous one is also stored in "updates" with the time it was first seen, so a
+morning rate and an evening revision both show with their own time.
 """
 import datetime as dt
 import html
@@ -22,6 +24,7 @@ import urllib.request
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', 'grt-rate.json'))
+CSV = os.path.normpath(os.path.join(HERE, '..', 'grt-history.csv'))
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/130.0 Safari/537.36')
 GRT_URL = 'https://www.grtjewels.com/'
@@ -128,13 +131,14 @@ def apply(state, rate, errors, now):
     if rate:
         same_day = state.get('date') == rate['date']
         newer_day = not state.get('date') or rate['date'] > state['date']
+        reading = {'at': iso, 'k22': rate['k22'], 'k24': rate['k24']}
         if newer_day:
             if state.get('date') and state.get('k22'):
                 state['prev'] = {'date': state['date'], 'k22': state['k22'], 'k24': state['k24']}
             elif rate.get('prev'):
                 state['prev'] = rate['prev']
             state.update(date=rate['date'], k22=rate['k22'], k24=rate['k24'], updated_at=iso,
-                         updates=[{'at': iso, 'k22': rate['k22'], 'k24': rate['k24']}])
+                         updates=[dict(reading)], hourly=[])
         elif same_day and (state.get('k22'), state.get('k24')) != (rate['k22'], rate['k24']):
             state.update(k22=rate['k22'], k24=rate['k24'], updated_at=iso)
             state.setdefault('updates', []).append({'at': iso, 'k22': rate['k22'], 'k24': rate['k24']})
@@ -143,6 +147,9 @@ def apply(state, rate, errors, now):
         if newer_day or same_day:   # an older reading from a lagging source changes nothing
             state['source'] = rate['source']
             state['source_url'] = rate['source_url']
+            if rate['date'] == today:
+                hourly = state.get('hourly') if isinstance(state.get('hourly'), list) else []
+                state['hourly'] = hourly + [dict(reading)]
         state['status'] = 'ok' if state.get('date') == today else 'stale'
         state['error'] = ''
     else:
@@ -174,7 +181,17 @@ def main():
         print(f"read {rate['date']} 22K {rate['k22']} 24K {rate['k24']} from {rate['source']}")
     else:
         print('could not read a rate from any source')
-    if apply(state, rate, errors, now):
+    last_at = ((state.get('hourly') or [{}])[-1] or {}).get('at')
+    write = apply(state, rate, errors, now)
+    new_at = ((state.get('hourly') or [{}])[-1] or {}).get('at')
+    if new_at and new_at != last_at:
+        new_file = not os.path.exists(CSV)
+        with open(CSV, 'a', encoding='utf-8') as f:
+            if new_file:
+                f.write('date,time_ist,k22_per_g,k24_per_g,source\n')
+            f.write(f"{state['date']},{now.strftime('%H:%M')},{state['k22']},{state['k24']},{state['source']}\n")
+        print('grt-history.csv row added')
+    if write:
         with open(OUT, 'w', encoding='utf-8') as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
             f.write('\n')
